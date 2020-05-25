@@ -1,2 +1,7 @@
 Library
 Logs
+Temp
+.vs
+obj
+Assembly-CSharp.csproj
+Daphnia.sln
