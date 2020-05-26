@@ -16,18 +16,22 @@ namespace PPh
     public sealed class ObserverClient
     {
         // CONSTANTS
-        private const string SERVER_IP = "127.0.0.1";
-        private bool m_isSimulationRunning = false;
-        private const int UPDATE_EYE_TEXTURE_OUT = 20; // milliseconds
+        const string SERVER_IP = "127.0.0.1";
+        bool m_isSimulationRunning = false;
+        const ulong EYE_IMAGE_DELAY = 5000; // quantum of time. Eye inertion
+        const int STATISTIC_REQUEST_PERIOD = 900; // milliseconds
 
         // udpclient object
-        private UdpClient m_clientUdp;
-        private IPEndPoint m_remoteEndPoint;
-        private long m_lastUpdateStateExtTime = 0;
+        UdpClient m_clientUdp;
+        IPEndPoint m_remoteEndPoint;
+
+        ulong m_lastUpdateStateExtTime = 0;
+        ulong m_lastStatisticRequestTime = 0;
 
         // vars
-        private ulong m_timeOfTheUniverse = 0;
-        private object m_observerStateParamsMutex = new object();
+        ulong m_timeOfTheUniverse = 0;
+        object m_observerStateParamsMutex = new object();
+        object m_eyeTextureMutex = new object ();
 
         short m_latitude = 0;
         short m_longitude = 0;
@@ -36,24 +40,81 @@ namespace PPh
         uint m_eatenCrumbNum = 0;
         bool m_isEatenCrumb = false;
         VectorInt32Math m_eatenCrumbPos = VectorInt32Math.ZeroVector;
+        ulong m_lastTextureUpdateTime;
+
+        EtherColor[,] m_eyeColorArray = new EtherColor[CommonParams.OBSERVER_EYE_SIZE, CommonParams.OBSERVER_EYE_SIZE]; // photon (x,y) placed to [CommonParams.OBSERVER_EYE_SIZE - y -1][x] for simple copy to texture
+        ulong[,] m_eyeUpdateTimeArray = new ulong[CommonParams.OBSERVER_EYE_SIZE, CommonParams.OBSERVER_EYE_SIZE];
 
         // read Thread
-        private Thread m_simulationThread;
+        Thread m_simulationThread;
 
         // motor neurons
         bool m_isLeft = false, m_isRight = false, m_isUp = false, m_isDown = false, m_isForward = false, m_isBackward = false;
 
-        private ObserverClient() { }
+        // statistics
+        object m_serverStatisticsMutex = new object();
+        uint m_quantumOfTimePerSecond = 0;
+        uint m_universeThreadsNum = 0;
+        uint m_TickTimeMusAverageUniverseThreadsMin = 0;
+        uint m_TickTimeMusAverageUniverseThreadsMax = 0;
+        uint m_TickTimeMusAverageObserverThread = 0;
+        ulong m_clientServerPerformanceRatio = 0;
+        ulong m_serverClientPerformanceRatio = 0;
+
+        ObserverClient() { }
 
         public static ObserverClient Instance { get { return Nested.source; } }
 
-        private class Nested
+        class Nested
         {
             static Nested()
             {
             }
 
             internal static readonly ObserverClient source = new ObserverClient();
+        }
+
+        public void GetStateExtParams(out VectorInt32Math outPosition, out ushort outMovingProgress, out short outLatitude,
+            out short outLongitude, out bool outIsEatenCrumb)
+        {
+            lock (m_observerStateParamsMutex)
+            {
+                outPosition = m_position;
+                outMovingProgress = m_movingProgress;
+                outLatitude = m_latitude;
+                outLongitude = m_longitude;
+                outIsEatenCrumb = m_isEatenCrumb;
+            }
+        }
+
+        public void GetStatisticsParams(out uint outQuantumOfTimePerSecond, out uint outUniverseThreadsNum,
+            out uint outTickTimeMusAverageUniverseThreadsMin, out uint outTickTimeMusAverageUniverseThreadsMax,
+            out uint outTickTimeMusAverageObserverThread, out ulong outClientServerPerformanceRatio,
+            out ulong outServerClientPerformanceRatio)
+        {
+            lock (m_serverStatisticsMutex)
+            {
+                outQuantumOfTimePerSecond = m_quantumOfTimePerSecond;
+                outUniverseThreadsNum = m_universeThreadsNum;
+                outTickTimeMusAverageUniverseThreadsMin = m_TickTimeMusAverageUniverseThreadsMin;
+                outTickTimeMusAverageUniverseThreadsMax = m_TickTimeMusAverageUniverseThreadsMax;
+                outTickTimeMusAverageObserverThread = m_TickTimeMusAverageObserverThread;
+                outClientServerPerformanceRatio = m_clientServerPerformanceRatio;
+                outServerClientPerformanceRatio = m_serverClientPerformanceRatio;
+            }
+        }
+
+        public VectorInt32Math GrabEatenCrumbPos()
+        {
+            lock (m_observerStateParamsMutex)
+            {
+                if (m_isEatenCrumb)
+                {
+                    m_isEatenCrumb = false;
+                    return m_eatenCrumbPos;
+                }
+            }
+            return VectorInt32Math.ZeroVector;
         }
 
         public void StartSimulation()
@@ -123,7 +184,54 @@ namespace PPh
             }
         }
 
-        private void ThreadCycle()
+        public void StopSimulation()
+        {
+            if (m_isSimulationRunning)
+            {
+                // stop thread
+            }
+        }
+
+        // Set motor neurons
+        public void SetIsLeft(bool value) { m_isLeft = value; }
+        public void SetIsRight(bool value) { m_isRight = value; }
+        public void SetIsUp(bool value) { m_isUp = value; }
+        public void SetIsDown(bool value) { m_isDown = value; }
+        public void SetIsForward(bool value) { m_isForward = value; }
+        public void SetIsBackward(bool value) { m_isBackward = value; }
+
+        public EtherColor[,] GetEyeTexture()
+        {
+            EtherColor[,] eyeColorArray;
+            ulong[,] eyeUpdateTimeArray;
+            lock (m_eyeTextureMutex)
+            {
+                eyeColorArray = m_eyeColorArray;
+                eyeUpdateTimeArray = m_eyeUpdateTimeArray;
+            }
+            for (uint yy = 0; yy < eyeColorArray.GetLength(0); ++yy)
+            {
+                for (uint xx = 0; xx < eyeColorArray.GetLength(1); ++xx)
+                {
+                    ulong timeDiff = m_timeOfTheUniverse - eyeUpdateTimeArray[yy, xx];
+                    byte alpha = m_eyeColorArray[yy, xx].m_colorA;
+                    if (timeDiff < EYE_IMAGE_DELAY)
+                    {
+                        alpha = (byte)(alpha * (EYE_IMAGE_DELAY - timeDiff) / EYE_IMAGE_DELAY);
+                        eyeColorArray[yy, xx].m_colorA = alpha;
+                    }
+                    else
+                    {
+                        alpha = 0;
+                    }
+                    eyeColorArray[yy, xx].m_colorA = alpha;
+                }
+            }
+
+            return eyeColorArray;
+        }
+
+        void ThreadCycle()
         {
             while (m_isSimulationRunning)
             {
@@ -131,21 +239,32 @@ namespace PPh
             }
         }
 
-        private void PPhTick()
+        ulong GetTimeMs()
+        {
+            return (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        }
+
+        void PPhTick()
         {
             {
                 MsgGetState msg = new MsgGetState();
                 byte[] buffer = msg.GetBuffer();
                 m_clientUdp.Send(buffer, buffer.Length, m_remoteEndPoint);
             }
-            if (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - m_lastUpdateStateExtTime > UPDATE_EYE_TEXTURE_OUT)
+            if (GetTimeMs() - m_lastUpdateStateExtTime > 20)  // get position/orientation data every n milliseconds
             {
-                m_lastUpdateStateExtTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                m_lastUpdateStateExtTime = GetTimeMs();
                 MsgGetStateExt msg = new MsgGetStateExt();
                 byte[] buffer = msg.GetBuffer();
                 m_clientUdp.Send(buffer, buffer.Length, m_remoteEndPoint);
             }
-
+            if (GetTimeMs() - m_lastStatisticRequestTime > STATISTIC_REQUEST_PERIOD)
+            {
+                m_lastStatisticRequestTime = GetTimeMs();
+                MsgGetStatistics msg = new MsgGetStatistics();
+                byte[] buffer = msg.GetBuffer();
+                m_clientUdp.Send(buffer, buffer.Length, m_remoteEndPoint);
+            }
             if (m_isLeft)
             {
                 MsgRotateLeft msg = new MsgRotateLeft();
@@ -222,16 +341,35 @@ namespace PPh
                                 }
                             }
                             break;
+                        case MsgType.SendPhoton:
+                			{
+                                MsgSendPhoton msg = ServerProtocol.QueryMessage<MsgSendPhoton>(buffer);
+                                // receive photons back // revert Y-coordinate because of texture format
+                                // photon (x,y) placed to [CommonParams.OBSERVER_EYE_SIZE - y -1][x] for simple copy to texture
+                                lock (m_eyeTextureMutex)
+                                {
+                                    m_eyeColorArray[CommonParams.OBSERVER_EYE_SIZE - msg.m_posY - 1, msg.m_posX] = msg.m_color;
+                                    m_eyeUpdateTimeArray[CommonParams.OBSERVER_EYE_SIZE - msg.m_posY - 1, msg.m_posX] = m_timeOfTheUniverse;
+                                }
+                            }
+                            break;
+                        case MsgType.GetStatisticsResponse:
+                            {
+                                MsgGetStatisticsResponse msg = ServerProtocol.QueryMessage<MsgGetStatisticsResponse>(buffer);
+                                lock (m_serverStatisticsMutex)
+                                {
+                                    m_quantumOfTimePerSecond = msg.m_fps;
+                                    m_TickTimeMusAverageObserverThread = msg.m_observerThreadTickTime;
+                                    m_TickTimeMusAverageUniverseThreadsMin = msg.m_universeThreadMinTickTime;
+                                    m_TickTimeMusAverageUniverseThreadsMax = msg.m_universeThreadMaxTickTime;
+                                    m_universeThreadsNum = msg.m_universeThreadsCount;
+                                    m_clientServerPerformanceRatio = msg.m_clientServerPerformanceRatio;
+                                    m_serverClientPerformanceRatio = msg.m_serverClientPerformanceRatio;
+                                }
+                            }
+                            break;
                     }
                 }
-            }
-        }
-
-        public void StopSimulation()
-        {
-            if (m_isSimulationRunning)
-            {
-                // stop thread
             }
         }
 
