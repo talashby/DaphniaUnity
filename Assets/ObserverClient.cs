@@ -122,19 +122,6 @@ namespace PPh
         {
             m_isSimulationRunning = true;
 
-            //size = System.Runtime.InteropServices.Marshal.SizeOf(typeof(MsgGetStateResponse));
-            /*MsgGetStateResponse msg1 = new MsgGetStateResponse();
-            msg1.m_time = 21;
-            byte[] buf = msg1.GetBuffer();
-            for (MsgGetStateResponse msg = ServerProtocol.QueryMessage<MsgGetStateResponse>(buf); msg != null; msg = null)
-            {
-                int eee = 0;
-            }
-            for (MsgGetState msg = ServerProtocol.QueryMessage<MsgGetState>(buf); msg != null; msg = null)
-            {
-                int eee = 0;
-            }*/
-
             m_clientUdp = new UdpClient();
 
             for (int port = CommonParams.CLIENT_UDP_PORT_START; port < CommonParams.CLIENT_UDP_PORT_START + CommonParams.MAX_CLIENTS; ++port)
