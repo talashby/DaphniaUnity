@@ -17,9 +17,10 @@ namespace PPh
     {
         // CONSTANTS
         const string SERVER_IP = "127.0.0.1";
-        bool m_isSimulationRunning = false;
         const ulong EYE_IMAGE_DELAY = 5000; // quantum of time. Eye inertion
         const int STATISTIC_REQUEST_PERIOD = 900; // milliseconds
+
+        bool m_isSimulationRunning = false;
 
         // udpclient object
         UdpClient m_clientUdp;
@@ -218,7 +219,6 @@ namespace PPh
                     if (timeDiff < EYE_IMAGE_DELAY)
                     {
                         alpha = (byte)(alpha * (EYE_IMAGE_DELAY - timeDiff) / EYE_IMAGE_DELAY);
-                        eyeColorArray[yy, xx].m_colorA = alpha;
                     }
                     else
                     {
