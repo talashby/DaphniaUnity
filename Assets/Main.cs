@@ -40,11 +40,6 @@ public class Main : MonoBehaviour
 
     void OnGUI()
     {
-        /*if (GUI.Button(new Rect(10, 10, 150, 100), "I am a button"))
-        {
-            print("You clicked the button!");
-        }*/
-
         var eyeColorArray = PPh.ObserverClient.Instance.GetEyeTexture();
         for (uint yy = 0; yy < eyeColorArray.GetLength(0); ++yy)
         {
