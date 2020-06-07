@@ -56,9 +56,9 @@ namespace PPh
         object m_serverStatisticsMutex = new object();
         uint m_quantumOfTimePerSecond = 0;
         uint m_universeThreadsNum = 0;
-        uint m_TickTimeMusAverageUniverseThreadsMin = 0;
-        uint m_TickTimeMusAverageUniverseThreadsMax = 0;
-        uint m_TickTimeMusAverageObserverThread = 0;
+        uint m_tickTimeMusAverageUniverseThreadsMin = 0;
+        uint m_tickTimeMusAverageUniverseThreadsMax = 0;
+        uint m_tickTimeMusAverageObserverThread = 0;
         ulong m_clientServerPerformanceRatio = 0;
         ulong m_serverClientPerformanceRatio = 0;
 
@@ -97,9 +97,9 @@ namespace PPh
             {
                 outQuantumOfTimePerSecond = m_quantumOfTimePerSecond;
                 outUniverseThreadsNum = m_universeThreadsNum;
-                outTickTimeMusAverageUniverseThreadsMin = m_TickTimeMusAverageUniverseThreadsMin;
-                outTickTimeMusAverageUniverseThreadsMax = m_TickTimeMusAverageUniverseThreadsMax;
-                outTickTimeMusAverageObserverThread = m_TickTimeMusAverageObserverThread;
+                outTickTimeMusAverageUniverseThreadsMin = m_tickTimeMusAverageUniverseThreadsMin;
+                outTickTimeMusAverageUniverseThreadsMax = m_tickTimeMusAverageUniverseThreadsMax;
+                outTickTimeMusAverageObserverThread = m_tickTimeMusAverageObserverThread;
                 outClientServerPerformanceRatio = m_clientServerPerformanceRatio;
                 outServerClientPerformanceRatio = m_serverClientPerformanceRatio;
             }
@@ -346,9 +346,9 @@ namespace PPh
                                 lock (m_serverStatisticsMutex)
                                 {
                                     m_quantumOfTimePerSecond = msg.m_fps;
-                                    m_TickTimeMusAverageObserverThread = msg.m_observerThreadTickTime;
-                                    m_TickTimeMusAverageUniverseThreadsMin = msg.m_universeThreadMinTickTime;
-                                    m_TickTimeMusAverageUniverseThreadsMax = msg.m_universeThreadMaxTickTime;
+                                    m_tickTimeMusAverageObserverThread = msg.m_observerThreadTickTime;
+                                    m_tickTimeMusAverageUniverseThreadsMin = msg.m_universeThreadMinTickTime;
+                                    m_tickTimeMusAverageUniverseThreadsMax = msg.m_universeThreadMaxTickTime;
                                     m_universeThreadsNum = msg.m_universeThreadsCount;
                                     m_clientServerPerformanceRatio = msg.m_clientServerPerformanceRatio;
                                     m_serverClientPerformanceRatio = msg.m_serverClientPerformanceRatio;
