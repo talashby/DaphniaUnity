@@ -12,11 +12,16 @@ namespace PPh
 
     public static class CommonParams
     {
-        public const int PROTOCOL_VERSION = 1;
+        public const int PROTOCOL_VERSION = 2;
         public const int DEFAULT_BUFLEN = 512;
         public const int CLIENT_UDP_PORT_START = 50000;
         public const int MAX_CLIENTS = 10;
         public const int OBSERVER_EYE_SIZE = 16; // pixels
+        public enum ObserverType
+        {
+            Daphnia8x8 = 1,
+			Daphnia16x16
+        }
     }
 
     public enum MsgType
@@ -75,6 +80,7 @@ namespace PPh
         public static byte GetTypeEnum() { return (byte)MsgType.CheckVersion; }
         public uint m_clientVersion;
         public ulong m_observerId;
+        public byte m_observerType;
     };
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

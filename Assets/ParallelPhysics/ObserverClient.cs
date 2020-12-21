@@ -19,6 +19,7 @@ namespace PPh
         const string SERVER_IP = "127.0.0.1";
         const ulong EYE_IMAGE_DELAY = 5000; // quantum of time. Eye inertion
         const int STATISTIC_REQUEST_PERIOD = 900; // milliseconds
+        const byte OBSERVER_TYPE = (byte)CommonParams.ObserverType.Daphnia16x16;
 
         bool m_isSimulationRunning = false;
 
@@ -131,6 +132,7 @@ namespace PPh
                 {
                     MsgCheckVersion msg = new MsgCheckVersion();
                     msg.m_clientVersion = CommonParams.PROTOCOL_VERSION;
+                    msg.m_observerType = OBSERVER_TYPE;
                     byte[] buffer = msg.GetBuffer();
                     m_clientUdp.Send(buffer, buffer.Length, m_remoteEndPoint);
                 }
