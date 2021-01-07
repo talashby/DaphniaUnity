@@ -7,8 +7,6 @@ public class Main : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        Debug.Log("Hello World!");
-
         PPh.ObserverClient.Instance.StartSimulation();
     }
 
@@ -87,7 +85,7 @@ public class Main : MonoBehaviour
             strOut += ("\nLongitude: ") + (outLongitude);
         }
         GUI.enabled = true;
-        Camera cam = Camera.current;
+        Camera cam = Camera.main;
         Vector3 pos = cam.WorldToScreenPoint(new Vector3(0, 5, 0));
         GUI.Label(new Rect(pos.x, Screen.height - pos.y, 300, 230), strOut);
     }
